@@ -40,8 +40,9 @@ exec ros -Q -- $0 "$@"
       max-number-and-step))
 
   (let* ((numbers (bit-off base-number))
-         (collatz-steps (pmap 'list #'collatz numbers))
-         (numbers-and-steps (mapcar #'cons numbers collatz-steps))
+         (numbers-and-steps (pmap 'list (lambda (x)
+                                          (cons x (collatz x)))
+                                  numbers))
          (result (preduce #'(lambda (rhs lhs)
                               (if (> (cdr rhs) (cdr lhs)) rhs lhs))
                           (append (list max-number-and-step)
