@@ -16,6 +16,8 @@ exec ros -Q -- $0 "$@"
                 #:preduce))
 (in-package :ros.script.collatz.3787876844)
 
+(defconstant +1bits+ (1- (ash 1 332)))
+
 (defun rand100 ()
   (random (expt 10 100)))
 
@@ -26,18 +28,34 @@ exec ros -Q -- $0 "$@"
                        (/ result 2))))
     ((<= result 1) size)))
 
-(defun longer-collatz (a b)
-  (let* ((num 10000)
-         (ns (append (loop for i upto num collect (rand100)) (list a b)))
-         (cs (pmap 'list #'(lambda (r) (collatz r)) ns))
-         (ncs (pmap 'list #'(lambda (r c) (list r c)) ns cs))
-         (result (preduce #'(lambda (a b) (if (> (second a) (second b)) a b)) ncs)))
-    (format t "~s~%" result)
-    (longer-collatz (first result) (second result))))
+(defun bit-off (x)
+  (loop for i below 331
+        collect (logand x
+                        (logxor +1bits+
+                                (ash 1 i)))))
+
+(defun longer-collatz (max-number-and-step base-number depth)
+  (when (= depth 0)
+    (return-from longer-collatz
+      max-number-and-step))
+
+  (let* ((numbers (bit-off base-number))
+         (collatz-steps (pmap 'list #'collatz numbers))
+         (numbers-and-steps (mapcar #'cons numbers collatz-steps))
+         (result (preduce #'(lambda (rhs lhs)
+                              (if (> (cdr rhs) (cdr lhs)) rhs lhs))
+                          (append (list max-number-and-step)
+                                  numbers-and-steps))))
+    (when (< (cdr max-number-and-step)
+             (cdr result))
+      (format t "~S~%" result))
+    (loop for n in numbers
+          do (setf result (longer-collatz result n (1- depth))))
+    result))
 
 (defun main (&rest argv)
   (declare (ignorable argv))
   (let ((*kernel* (make-kernel 4)))
     (make-random-state)
-    (longer-collatz 1 1)))
+    (longer-collatz (cons 1 0) +1bits+ 2)))
 ;;; vim: set ft=lisp lisp:
