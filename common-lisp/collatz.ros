@@ -55,7 +55,7 @@ exec ros -Q -- $0 "$@"
 
 (defun main (&rest argv)
   (declare (ignorable argv))
-  (let ((*kernel* (make-kernel 4)))
+  (let ((*kernel* (make-kernel 12)))
     (make-random-state)
     (longer-collatz (cons 1 0) +1bits+ 2)))
 ;;; vim: set ft=lisp lisp:
