@@ -5,7 +5,7 @@ exec ros -Q -- $0 "$@"
 |#
 (progn ;;init forms
   (ros:ensure-asdf)
-  #+quicklisp(ql:quickload '(:lparallel) :silent t))
+  #+quicklisp(ql:quickload '(:serapeum :lparallel) :silent t))
 
 (defpackage :ros.script.collatz.3787876844
   (:use :cl)
@@ -13,7 +13,10 @@ exec ros -Q -- $0 "$@"
                 #:*kernel*
                 #:make-kernel
                 #:pmap
-                #:preduce))
+                #:preduce
+                #:psort)
+  (:import-from #:serapeum
+                #:iota))
 (in-package :ros.script.collatz.3787876844)
 
 (defconstant +1bits+ (1- (ash 1 332)))
@@ -28,18 +31,53 @@ exec ros -Q -- $0 "$@"
                        (/ result 2))))
     ((<= result 1) size)))
 
-(defun bit-off (x)
+(defun each-bit-off (x)
   (loop for i below 331
         collect (logand x
                         (logxor +1bits+
                                 (ash 1 i)))))
 
-(defun longer-collatz (max-number-and-step base-number depth)
-  (when (= depth 0)
+(defun combination (n k)
+  (labels ((comb (as b k)
+             (if (= k 0)
+                 (sort b #'<)
+                 (let ((result (pmap 'list (lambda (n)
+                                             (comb (remove n (copy-list as))
+                                                   (append b (list n))
+                                                   (1- k)))
+                                     as)))
+                   (if (= k 1)
+                       result
+                       (apply #'append result))))))
+    (psort (remove-duplicates (comb (iota n) '() k)
+                             :test #'equalp)
+           (lambda (xs ys)
+             (loop for x in xs
+                   for y in ys
+                   when (< x y)
+                   return t)))))
+
+(defun bit-off-masks (c)
+  (mapcar (lambda (x)
+            (logxor +1bits+ (ash 1 x)))
+          c))
+
+(defun bit-off (cs)
+  (pmap 'list (lambda (c)
+                (reduce (lambda (rhs lhs)
+                          (logand rhs lhs))
+                        (bit-off-masks c)
+                        :initial-value +1bits+))
+        cs))
+
+(defvar *max-depth* 2)
+
+(defun longer-collatz (max-number-and-step depth)
+  (when (> depth *max-depth*)
     (return-from longer-collatz
       max-number-and-step))
 
-  (let* ((numbers (bit-off base-number))
+  (let* ((numbers (bit-off (combination 332 depth)))
          (numbers-and-steps (pmap 'list (lambda (x)
                                           (cons x (collatz x)))
                                   numbers))
@@ -47,16 +85,16 @@ exec ros -Q -- $0 "$@"
                               (if (> (cdr rhs) (cdr lhs)) rhs lhs))
                           (append (list max-number-and-step)
                                   numbers-and-steps))))
+    (format t "~A~%" (length numbers))
     (when (< (cdr max-number-and-step)
              (cdr result))
       (format t "~S~%" result))
-    (loop for n in numbers
-          do (setf result (longer-collatz result n (1- depth))))
-    result))
+    (longer-collatz result (1+ depth))))
 
 (defun main (&rest argv)
   (declare (ignorable argv))
-  (let ((*kernel* (make-kernel 12)))
-    (make-random-state)
-    (longer-collatz (cons 1 0) +1bits+ 2)))
+  (make-random-state)
+  (let ((*kernel* (make-kernel 12))
+        (*max-depth* 3))
+    (longer-collatz '(1 . 0) 1)))
 ;;; vim: set ft=lisp lisp:
