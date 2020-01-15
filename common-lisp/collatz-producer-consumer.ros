@@ -78,7 +78,10 @@ exec ros -Q -- $0 "$@"
 
 (defun longer-collatz (max-depth)
   (pand (loop for i from 1 to max-depth
-              do (combination-queue 332 i))
+              do (combination-queue 332 i)
+              finally (progn
+                        (pprint "producer fin.")
+                        (return t)))
         (let ((max-number-and-step '(1 . 0)))
           (loop do (let* ((numbers (loop for i below 10000
                                          when (not (queue-empty-p *queue*))
