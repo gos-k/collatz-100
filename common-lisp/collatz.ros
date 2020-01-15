@@ -24,7 +24,11 @@ exec ros -Q -- $0 "$@"
 (defun rand100 ()
   (random (expt 10 100)))
 
+(declaim (inline collatz))
 (defun collatz (value)
+  (declare (optimize (speed 3) (space 0) (safety 0))
+           (type integer value)
+           (type fixnum size))
   (do ((size 0 (+ size 1))
        (result value (if (oddp result)
                          (+ (* 3 result) 1)
@@ -38,6 +42,7 @@ exec ros -Q -- $0 "$@"
                                 (ash 1 i)))))
 
 (defun combination (n k)
+  (declare (optimize (speed 3) (space 0) (safety 0)))
   (labels ((comb (as b k)
              (if (= k 0)
                  (sort b #'<)
@@ -57,12 +62,15 @@ exec ros -Q -- $0 "$@"
                    when (< x y)
                    return t)))))
 
+(declaim (inline bit-off-masks))
 (defun bit-off-masks (c)
+  (declare (optimize (speed 3) (space 0) (safety 0)))
   (mapcar (lambda (x)
             (logxor +1bits+ (ash 1 x)))
           c))
 
 (defun bit-off (cs)
+  (declare (optimize (speed 3) (space 0) (safety 0)))
   (pmap 'list (lambda (c)
                 (reduce (lambda (rhs lhs)
                           (logand rhs lhs))
