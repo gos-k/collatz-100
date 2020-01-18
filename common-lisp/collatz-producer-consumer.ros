@@ -81,6 +81,9 @@ exec ros -Q -- $0 "$@"
              nil))
     (comb (iota n) '() k)))
 
+(defun now ()
+  (reverse (butlast (multiple-value-list (decode-universal-time (get-universal-time))) 3)))
+
 (defun longer-collatz (max-depth)
   (bordeaux-threads:make-thread
    (lambda ()
@@ -91,34 +94,28 @@ exec ros -Q -- $0 "$@"
                        (format t "producer fin.~%")
                        (return t))))))
 
-  (loop while (queue-empty-p *queue*) do (sleep 0.1))
-  (let ((max-number-and-step '(1 . 0)))
-    (loop do (progn
-               (let ((numbers (loop for i below *consumer-data-size*
-                                    when (not (queue-empty-p *queue*))
-                                    collect (pop-queue *queue*))))
-                 (let ((numbers-and-steps (pmap 'list (lambda (x)
-                                                        (cons x (collatz x)))
-                                                numbers)))
-                   (let ((result (preduce #'(lambda (rhs lhs)
-                                              (if (> (cdr rhs) (cdr lhs)) rhs lhs))
-                                          (append (list max-number-and-step)
-                                                  numbers-and-steps))))
-                     (when (< (cdr max-number-and-step)
-                              (cdr result))
-                       (setf max-number-and-step result)
-                       (format t "~S~%" 
-                               (reverse
-                                (butlast
-                                 (multiple-value-list
-                                  (decode-universal-time (get-universal-time)))
-                                 3)))
-                       (format t "~S~%" result)
-                       (sleep 1)))))))))
+  (let ((*kernel* (make-kernel (* 6 3))))
+    (loop while (queue-empty-p *queue*) do (sleep 0.1))
+    (let ((max-number-and-step '(1 . 0)))
+      (loop do (progn
+                 (let ((numbers (loop for i below *consumer-data-size*
+                                      when (not (queue-empty-p *queue*))
+                                      collect (pop-queue *queue*))))
+                   (let ((numbers-and-steps (pmap 'list (lambda (x)
+                                                          (cons x (collatz x)))
+                                                  numbers)))
+                     (let ((result (preduce #'(lambda (rhs lhs)
+                                                (if (> (cdr rhs) (cdr lhs)) rhs lhs))
+                                            (append (list max-number-and-step)
+                                                    numbers-and-steps))))
+                       (when (< (cdr max-number-and-step)
+                                (cdr result))
+                         (setf max-number-and-step result)
+                         (format t "~S~%" (now))
+                         (format t "~S~%" result)
+                         (sleep 1))))))))))
 
 (defun main (&rest argv)
   (declare (ignorable argv))
-  (make-random-state)
-  (let ((*kernel* (make-kernel (* 6 3))))
-    (longer-collatz 3)))
+  (longer-collatz 3))
 ;;; vim: set ft=lisp lisp:
