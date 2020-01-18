@@ -63,10 +63,7 @@ exec ros -Q -- $0 "$@"
           c))
 
 (defun bit-off-value (c)
-  (reduce (lambda (rhs lhs)
-            (logand rhs lhs))
-          (bit-off-masks c)
-          :initial-value +1bits+))
+  (reduce #'logand (bit-off-masks c) :initial-value +1bits+))
 
 (defun combination-queue (n k)
   ;(declare (optimize (speed 3) (space 0) (safety 0)))
