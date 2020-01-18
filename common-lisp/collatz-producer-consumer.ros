@@ -94,7 +94,8 @@ exec ros -Q -- $0 "$@"
   (let ((*kernel* (make-kernel (* 6 3))))
     (loop while (queue-empty-p *queue*) do (sleep 0.1))
     (let ((max-number-and-step '(1 . 0)))
-      (loop do (progn
+      (loop while (not (queue-empty-p *queue*))
+            do (progn
                  (let ((numbers (loop for i below *consumer-data-size*
                                       when (not (queue-empty-p *queue*))
                                       collect (pop-queue *queue*))))
