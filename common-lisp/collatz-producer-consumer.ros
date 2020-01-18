@@ -91,7 +91,7 @@ exec ros -Q -- $0 "$@"
                        (format t "producer fin.~%")
                        (return t))))))
 
-  (sleep 5)
+  (loop while (queue-empty-p *queue*) do (sleep 0.1))
   (let ((max-number-and-step '(1 . 0)))
     (loop do (progn
                (let ((numbers (loop for i below *consumer-data-size*
