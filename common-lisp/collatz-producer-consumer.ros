@@ -5,10 +5,12 @@ exec ros -Q -- $0 "$@"
 |#
 (progn ;;init forms
   (ros:ensure-asdf)
-  #+quicklisp(ql:quickload '(:serapeum :lparallel) :silent t))
+  #+quicklisp(ql:quickload '(:serapeum :bordeaux-threads :lparallel) :silent t))
 
 (defpackage :ros.script.collatz.3787876844
   (:use :cl)
+  (:import-from #:bordeaux-threads
+                #:make-thread)
   (:import-from #:lparallel
                 #:*kernel*
                 #:make-kernel
@@ -29,6 +31,9 @@ exec ros -Q -- $0 "$@"
 
 (defconstant +1bits+ (1- (ash 1 332)))
 
+(defvar *queue-capacity*  10000000)
+(defvar *consumer-data-size* 100000)
+
 (defun rand100 ()
   (random (expt 10 100)))
 
@@ -48,7 +53,7 @@ exec ros -Q -- $0 "$@"
                         (logxor +1bits+
                                 (ash 1 i)))))
 
-(defvar *queue* (make-queue))
+(defvar *queue* (make-queue :fixed-capacity *queue-capacity*))
 
 (declaim (inline bit-off-masks))
 (defun bit-off-masks (c)
@@ -77,31 +82,43 @@ exec ros -Q -- $0 "$@"
     (comb (iota n) '() k)))
 
 (defun longer-collatz (max-depth)
-  (pand (loop for i from 1 to max-depth
-              do (combination-queue 332 i)
-              finally (progn
-                        (pprint "producer fin.")
-                        (return t)))
-        (let ((max-number-and-step '(1 . 0)))
-          (loop do (let* ((numbers (loop for i below 10000
-                                         when (not (queue-empty-p *queue*))
-                                         collect (pop-queue *queue*)))
-                          (numbers-and-steps (pmap 'list (lambda (x)
-                                                           (cons x (collatz x)))
-                                                   numbers))
-                          (result (preduce #'(lambda (rhs lhs)
-                                               (if (> (cdr rhs) (cdr lhs)) rhs lhs))
-                                           (append (list max-number-and-step)
-                                                   numbers-and-steps))))
+  (bordeaux-threads:make-thread
+   (lambda ()
+     (let ((*kernel* (make-kernel (* 6 3))))
+       (loop for i from 1 to max-depth
+             do (combination-queue 332 i)
+             finally (progn
+                       (format t "producer fin.~%")
+                       (return t))))))
+
+  (sleep 5)
+  (let ((max-number-and-step '(1 . 0)))
+    (loop do (progn
+               (let ((numbers (loop for i below *consumer-data-size*
+                                    when (not (queue-empty-p *queue*))
+                                    collect (pop-queue *queue*))))
+                 (let ((numbers-and-steps (pmap 'list (lambda (x)
+                                                        (cons x (collatz x)))
+                                                numbers)))
+                   (let ((result (preduce #'(lambda (rhs lhs)
+                                              (if (> (cdr rhs) (cdr lhs)) rhs lhs))
+                                          (append (list max-number-and-step)
+                                                  numbers-and-steps))))
                      (when (< (cdr max-number-and-step)
                               (cdr result))
                        (setf max-number-and-step result)
-                       (format t "~S~%" result))
-                     (sleep 1))))))
+                       (format t "~S~%" 
+                               (reverse
+                                (butlast
+                                 (multiple-value-list
+                                  (decode-universal-time (get-universal-time)))
+                                 3)))
+                       (format t "~S~%" result)
+                       (sleep 1)))))))))
 
 (defun main (&rest argv)
   (declare (ignorable argv))
   (make-random-state)
-  (let ((*kernel* (make-kernel 12)))
-    (longer-collatz 2)))
+  (let ((*kernel* (make-kernel (* 6 3))))
+    (longer-collatz 3)))
 ;;; vim: set ft=lisp lisp:
