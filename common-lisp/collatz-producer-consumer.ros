@@ -107,14 +107,13 @@ exec ros -Q -- $0 "$@"
                                                   numbers)))
                      (let ((result (preduce #'(lambda (rhs lhs)
                                                 (if (> (cdr rhs) (cdr lhs)) rhs lhs))
-                                            (append (list max-number-and-step)
-                                                    numbers-and-steps))))
+                                            (cons max-number-and-step
+                                                  numbers-and-steps))))
                        (when (< (cdr max-number-and-step)
                                 (cdr result))
                          (setf max-number-and-step result)
-                         (format t "~S~%" (now))
-                         (format t "~S~%" result)
-                         (sleep 1))))))))))
+                         (format t "~S~%~S~%" (now) result)
+                         (sleep 0.1))))))))))
 
 (defun main (&rest argv)
   (check-type (car argv) string)
