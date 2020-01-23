@@ -32,7 +32,9 @@ exec ros -Q -- $0 "$@"
 (defconstant +1bits+ (1- (ash 1 332)))
 
 (defvar *queue-capacity*  10000000)
+(defvar *producer-worker-size* (* 6 3))
 (defvar *consumer-data-size* 100000)
+(defvar *consumer-worker-size* (* 6 3))
 
 (defun rand100 ()
   (random (expt 10 100)))
@@ -82,16 +84,16 @@ exec ros -Q -- $0 "$@"
   (reverse (butlast (multiple-value-list (decode-universal-time (get-universal-time))) 3)))
 
 (defun longer-collatz (max-depth)
-  (bordeaux-threads:make-thread
+  (make-thread
    (lambda ()
-     (let ((*kernel* (make-kernel (* 6 3))))
+     (let ((*kernel* (make-kernel *producer-worker-size*)))
        (loop for i from 1 to max-depth
              do (combination-queue 332 i)
              finally (progn
                        (format t "producer fin.~%")
                        (return t))))))
 
-  (let ((*kernel* (make-kernel (* 6 3))))
+  (let ((*kernel* (make-kernel *consumer-worker-size*)))
     (loop while (queue-empty-p *queue*) do (sleep 0.1))
     (let ((max-number-and-step '(1 . 0)))
       (loop while (not (queue-empty-p *queue*))
