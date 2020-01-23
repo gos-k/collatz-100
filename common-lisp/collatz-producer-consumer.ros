@@ -47,7 +47,7 @@ exec ros -Q -- $0 "$@"
        (result value (if (oddp result)
                          (+ (* 3 result) 1)
                          (ash result -1))))
-    ((<= result 1) size)
+    ((= result 1) size)
     (declare (type fixnum size))))
 
 (defun each-bit-off (x)
