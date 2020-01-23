@@ -116,6 +116,6 @@ exec ros -Q -- $0 "$@"
                          (sleep 1))))))))))
 
 (defun main (&rest argv)
-  (declare (ignorable argv))
-  (longer-collatz 3))
+  (check-type (car argv) string)
+  (longer-collatz (parse-integer (car argv))))
 ;;; vim: set ft=lisp lisp:
